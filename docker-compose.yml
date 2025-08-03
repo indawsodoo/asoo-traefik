@@ -1,0 +1,95 @@
+networks:
+  traefik-net:
+    external: true
+
+services:
+  traefik:
+    image: traefik:v3.5.0
+    container_name: traefik
+    restart: always
+    command:
+      - "--log.level=INFO"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      
+      # Redirección global de HTTP a HTTPS
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=desarrollo@indaws.es"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+    ports:
+      - "80:80"
+      - "443:443"
+      #- "8080:8080"
+    networks:
+      - traefik-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+
+      # Dashboard de Traefik con páginas de error personalizadas
+      - "traefik.http.routers.traefik-https.rule=Host(`traefik.indaws.cloud`)"
+      - "traefik.http.routers.traefik-https.entrypoints=websecure"
+      - "traefik.http.routers.traefik-https.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik-https.service=traefik"
+      - "traefik.http.routers.traefik-https.middlewares=gzip,traefik-error-pages"
+
+      # Services
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+      # Middlewares
+      - "traefik.http.middlewares.gzip.compress=true"
+
+      # Error pages para el dashboard de traefik
+      - "traefik.http.middlewares.traefik-error-pages.errors.status=502,503,504"
+      - "traefik.http.middlewares.traefik-error-pages.errors.service=error-service@docker"
+      - "traefik.http.middlewares.traefik-error-pages.errors.query=/{status}.html"
+
+      # Error pages para otros servicios (sin odoo)
+      - "traefik.http.middlewares.backend-error-pages.errors.status=404,502,503,504"
+      - "traefik.http.middlewares.backend-error-pages.errors.service=error-service@docker"
+      - "traefik.http.middlewares.backend-error-pages.errors.query=/{status}.html"
+
+      # Error pages específicas para cuando hay restricción de IP
+      - "traefik.http.middlewares.ip-restriction-errors.errors.status=403,502,503,504"
+      - "traefik.http.middlewares.ip-restriction-errors.errors.service=error-service@docker"
+      - "traefik.http.middlewares.ip-restriction-errors.errors.query=/{status}.html"
+
+  errorpage:
+    image: nginx:alpine
+    container_name: traefik-errorpage
+    restart: always
+    volumes:
+      - ./errorpage:/usr/share/nginx/html:ro
+      - ./nginx-error.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      # Servicio para páginas de error (como antes)
+      - "traefik.http.services.error-service.loadbalancer.server.port=80"
+      
+      # NUEVO: Router universal solo para HTTP (sin warnings TLS)
+      # Prioridad negativa = la más baja posible
+      - "traefik.http.routers.universal-catchall-http.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.universal-catchall-http.entrypoints=web"
+      - "traefik.http.routers.universal-catchall-http.service=error-service"
+      - "traefik.http.routers.universal-catchall-http.priority=-1"
+      
+      # NUEVO: Router específico para dominios conocidos cuando están offline (HTTPS)
+      # Prioridad negativa = la más baja posible
+      - "traefik.http.routers.known-domains-fallback.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) || Host(`asoo-staging.indaws.cloud`)"
+      - "traefik.http.routers.known-domains-fallback.entrypoints=websecure"
+      - "traefik.http.routers.known-domains-fallback.tls.certresolver=myresolver"
+      - "traefik.http.routers.known-domains-fallback.service=error-service"
+      - "traefik.http.routers.known-domains-fallback.priority=-1"
