@@ -79,14 +79,26 @@ services:
       # Servicio para páginas de error (como antes)
       - "traefik.http.services.error-service.loadbalancer.server.port=80"
       
-      # NUEVO: Router universal solo para HTTP (sin warnings TLS)
+      # Servicio específico para respuestas 403 (fuerza el status code correcto)
+      - "traefik.http.services.forbidden-service.loadbalancer.server.port=80"
+      - "traefik.http.services.forbidden-service.loadbalancer.server.scheme=http"
+      - "traefik.http.services.forbidden-service.loadbalancer.passhostheader=false"
+      
+      # NUEVO: Bloqueo global por IP para /web/database/* - Prioridad MUY ALTA
+      - "traefik.http.routers.global-database-blocked.rule=PathPrefix(`/web/database/`) && !ClientIP(`194.30.4.97`)"
+      - "traefik.http.routers.global-database-blocked.entrypoints=websecure"
+      - "traefik.http.routers.global-database-blocked.tls=true"
+      - "traefik.http.routers.global-database-blocked.service=forbidden-service"
+      - "traefik.http.routers.global-database-blocked.priority=1000"
+      
+      # Router universal solo para HTTP (sin warnings TLS)
       # Prioridad negativa = la más baja posible
       - "traefik.http.routers.universal-catchall-http.rule=HostRegexp(`{host:.+}`)"
       - "traefik.http.routers.universal-catchall-http.entrypoints=web"
       - "traefik.http.routers.universal-catchall-http.service=error-service"
       - "traefik.http.routers.universal-catchall-http.priority=-1"
       
-      # NUEVO: Router específico para dominios conocidos cuando están offline (HTTPS)
+      # Router específico para dominios conocidos cuando están offline (HTTPS)
       # Prioridad negativa = la más baja posible
       - "traefik.http.routers.known-domains-fallback.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) || Host(`asoo-staging.indaws.cloud`)"
       - "traefik.http.routers.known-domains-fallback.entrypoints=websecure"

@@ -18,39 +18,15 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Router principal - Ya no necesita backend-error-pages (el fallback universal se encarga)
-      - "traefik.http.routers.odoo18-https.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) && !PathPrefix(`/web/database`) && !PathPrefix(`/website/info`) && !PathPrefix(`/websocket`)"
+      # Router principal
+      - "traefik.http.routers.odoo18-https.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`)"
       - "traefik.http.routers.odoo18-https.entrypoints=websecure"
       - "traefik.http.routers.odoo18-https.service=odoo18"
       - "traefik.http.routers.odoo18-https.tls.certresolver=myresolver"
       - "traefik.http.routers.odoo18-https.middlewares=gzip,sslheader,limit"
       - "traefik.http.routers.odoo18-https.priority=50"
 
-      # Router para IPs NO permitidas - Prioridad más alta (se evalúa primero)
-      - "traefik.http.routers.odoo-database-blocked.entrypoints=websecure"
-      - "traefik.http.routers.odoo-database-blocked.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) && PathPrefix(`/web/database/`) && !ClientIP(`194.30.4.97`)"
-      - "traefik.http.routers.odoo-database-blocked.tls.certresolver=myresolver"
-      - "traefik.http.routers.odoo-database-blocked.service=error-service@docker"
-      - "traefik.http.routers.odoo-database-blocked.middlewares=force-403-error"
-      - "traefik.http.routers.odoo-database-blocked.priority=150"
-
-      # Router para IPs permitidas - Prioridad más baja
-      - "traefik.http.routers.odoo-restricted-database.entrypoints=websecure"
-      - "traefik.http.routers.odoo-restricted-database.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) && PathPrefix(`/web/database/`) && ClientIP(`194.30.4.97`)"
-      - "traefik.http.routers.odoo-restricted-database.tls.certresolver=myresolver"
-      - "traefik.http.routers.odoo-restricted-database.service=odoo18"
-      - "traefik.http.routers.odoo-restricted-database.middlewares=gzip,sslheader,limit"
-      - "traefik.http.routers.odoo-restricted-database.priority=100"
-
-      # Router para website info - Sin backend-error-pages (fallback universal se encarga)
-      - "traefik.http.routers.odoo18-website-info-https.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) && PathPrefix(`/website/info`)"
-      - "traefik.http.routers.odoo18-website-info-https.entrypoints=websecure"
-      - "traefik.http.routers.odoo18-website-info-https.service=odoo18"
-      - "traefik.http.routers.odoo18-website-info-https.tls.certresolver=myresolver"
-      - "traefik.http.routers.odoo18-website-info-https.middlewares=gzip,sslheader,limit"
-      - "traefik.http.routers.odoo18-website-info-https.priority=75"
-
-      # Router para websocket - Sin backend-error-pages (fallback universal se encarga)
+      # Router para websocket
       - "traefik.http.routers.odoo18-im-https.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) && PathPrefix(`/websocket`)"
       - "traefik.http.routers.odoo18-im-https.entrypoints=websecure"
       - "traefik.http.routers.odoo18-im-https.service=odoo18-im"
@@ -58,7 +34,7 @@ services:
       - "traefik.http.routers.odoo18-im-https.middlewares=gzip,sslheader,limit"
       - "traefik.http.routers.odoo18-im-https.priority=75"
 
-      # Redirección de dominio staging (si la necesitas)
+      # Redirección de dominio staging
       - "traefik.http.routers.odoo-staging-redirect-https.rule=Host(`asoo-staging.indaws.cloud`)"
       - "traefik.http.routers.odoo-staging-redirect-https.entrypoints=websecure"
       - "traefik.http.routers.odoo-staging-redirect-https.tls.certresolver=myresolver"
@@ -79,8 +55,3 @@ services:
       - "traefik.http.middlewares.staging-to-main-redirect.redirectregex.regex=^https?://asoo-staging.indaws.cloud(.*)"
       - "traefik.http.middlewares.staging-to-main-redirect.redirectregex.replacement=https://asoo-finish-master-123.dev.indaws.cloud$${1}"
       - "traefik.http.middlewares.staging-to-main-redirect.redirectregex.permanent=true"
-      
-      # Middleware para forzar error 403 personalizado
-      - "traefik.http.middlewares.force-403-error.errors.status=403"
-      - "traefik.http.middlewares.force-403-error.errors.service=error-service@docker"
-      - "traefik.http.middlewares.force-403-error.errors.query=/403.html"
