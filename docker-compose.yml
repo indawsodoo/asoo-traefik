@@ -7,30 +7,22 @@ services:
     image: traefik:v3.5.0
     container_name: traefik
     restart: always
-    command:
-      # traefik parameters
-      - "--log.level=INFO"
-      - "--api.dashboard=false"
-      - "--api=false"
-      - "--api.insecure=false"
-
-      # providers
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-
-      # entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-
-      # http --> https
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-
-      # certificates
-      - "--certificatesresolvers.ssl-resolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es"
-      - "--certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json"
+    command: >
+      sh -c "chmod 600 /letsencrypt/acme.json && traefik 
+      --log.level=INFO 
+      --api.dashboard=false 
+      --api=false 
+      --api.insecure=false 
+      --providers.docker=true 
+      --providers.docker.exposedbydefault=false 
+      --entrypoints.web.address=:80 
+      --entrypoints.websecure.address=:443 
+      --entrypoints.web.http.redirections.entrypoint.to=websecure 
+      --entrypoints.web.http.redirections.entrypoint.scheme=https 
+      --entrypoints.web.http.redirections.entrypoint.permanent=true 
+      --certificatesresolvers.ssl-resolver.acme.tlschallenge=true 
+      --certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es 
+      --certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json"
 
     ports:
       - "80:80"
