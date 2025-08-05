@@ -8,26 +8,33 @@ services:
     container_name: traefik
     restart: always
     command:
+      # traefik parameters
       - "--log.level=INFO"
-      - "--api.insecure=true"
+      - "--api.dashboard=false"
+      - "--api=false"
+      - "--api.insecure=false"
+
+      # providers
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+
+      # entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      
-      # Redirección global de HTTP a HTTPS
+
+      # http --> https
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-      
-      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=desarrollo@indaws.es"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+      # certificates
+      - "--certificatesresolvers.ssl-resolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es"
+      - "--certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json"
 
     ports:
       - "80:80"
       - "443:443"
-      #- "8080:8080"
     networks:
       - traefik-net
     volumes:
@@ -36,34 +43,14 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Dashboard de Traefik con páginas de error personalizadas
-      - "traefik.http.routers.traefik-https.rule=Host(`traefik.indaws.cloud`)"
-      - "traefik.http.routers.traefik-https.entrypoints=websecure"
-      - "traefik.http.routers.traefik-https.tls.certresolver=myresolver"
-      - "traefik.http.routers.traefik-https.service=traefik"
-      - "traefik.http.routers.traefik-https.middlewares=gzip,traefik-error-pages"
-
-      # Services
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-
-      # Middlewares
+      # middlewares
       - "traefik.http.middlewares.gzip.compress=true"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
 
-      # Error pages para el dashboard de traefik
-      - "traefik.http.middlewares.traefik-error-pages.errors.status=502,503,504"
-      - "traefik.http.middlewares.traefik-error-pages.errors.service=error-service@docker"
-      - "traefik.http.middlewares.traefik-error-pages.errors.query=/{status}.html"
-
-      # Error pages para otros servicios (sin odoo)
-      - "traefik.http.middlewares.backend-error-pages.errors.status=404,502,503,504"
-      - "traefik.http.middlewares.backend-error-pages.errors.service=error-service@docker"
-      - "traefik.http.middlewares.backend-error-pages.errors.query=/{status}.html"
-
-      # Error pages específicas para cuando hay restricción de IP
-      - "traefik.http.middlewares.ip-restriction-errors.errors.status=403,502,503,504"
-      - "traefik.http.middlewares.ip-restriction-errors.errors.service=error-service@docker"
-      - "traefik.http.middlewares.ip-restriction-errors.errors.query=/{status}.html"
-
+  # error page
   errorpage:
     image: nginx:alpine
     container_name: traefik-errorpage
@@ -76,32 +63,35 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-net"
-      # Servicio para páginas de error (como antes)
-      - "traefik.http.services.error-service.loadbalancer.server.port=80"
-      
-      # Servicio específico para respuestas 403 (fuerza el status code correcto)
+
+      # maintenance page
+      - "traefik.http.services.maintenance-service.loadbalancer.server.port=80"
+      - "traefik.http.services.maintenance-service.loadbalancer.server.scheme=http"
+      - "traefik.http.services.maintenance-service.loadbalancer.passhostheader=false"
+
+      # 403 service
       - "traefik.http.services.forbidden-service.loadbalancer.server.port=80"
       - "traefik.http.services.forbidden-service.loadbalancer.server.scheme=http"
       - "traefik.http.services.forbidden-service.loadbalancer.passhostheader=false"
-      
-      # NUEVO: Bloqueo global por IP para /web/database/* - Prioridad MUY ALTA
-      - "traefik.http.routers.global-database-blocked.rule=PathPrefix(`/web/database/`) && !ClientIP(`194.30.4.97`)"
-      - "traefik.http.routers.global-database-blocked.entrypoints=websecure"
-      - "traefik.http.routers.global-database-blocked.tls=true"
-      - "traefik.http.routers.global-database-blocked.service=forbidden-service"
-      - "traefik.http.routers.global-database-blocked.priority=1000"
-      
-      # Router universal solo para HTTP (sin warnings TLS)
-      # Prioridad negativa = la más baja posible
-      - "traefik.http.routers.universal-catchall-http.rule=HostRegexp(`{host:.+}`)"
-      - "traefik.http.routers.universal-catchall-http.entrypoints=web"
-      - "traefik.http.routers.universal-catchall-http.service=error-service"
-      - "traefik.http.routers.universal-catchall-http.priority=-1"
-      
-      # Router específico para dominios conocidos cuando están offline (HTTPS)
-      # Prioridad negativa = la más baja posible
-      - "traefik.http.routers.known-domains-fallback.rule=Host(`asoo-finish-master-123.dev.indaws.cloud`) || Host(`asoo-staging.indaws.cloud`)"
-      - "traefik.http.routers.known-domains-fallback.entrypoints=websecure"
-      - "traefik.http.routers.known-domains-fallback.tls.certresolver=myresolver"
-      - "traefik.http.routers.known-domains-fallback.service=error-service"
-      - "traefik.http.routers.known-domains-fallback.priority=-1"
+
+      # /web/database/* - priority very high
+      - "traefik.http.routers.database-blocked.rule=(PathPrefix(`/web/database/`) || PathPrefix(`/asoo/`)) && !ClientIP(`194.30.4.97`) && !ClientIP(`194.30.4.101`)"
+      - "traefik.http.routers.database-blocked.entrypoints=websecure"
+      - "traefik.http.routers.database-blocked.tls=true"
+      - "traefik.http.routers.database-blocked.service=forbidden-service"
+      - "traefik.http.routers.database-blocked.middlewares=add-forbidden-header"
+      - "traefik.http.routers.database-blocked.priority=1000"
+
+      # known domains - priority very low
+      - "traefik.http.routers.errorpage-fallback.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.errorpage-fallback.entrypoints=websecure"
+      - "traefik.http.routers.errorpage-fallback.tls=true"
+      - "traefik.http.routers.errorpage-fallback.service=maintenance-service"
+      - "traefik.http.routers.errorpage-fallback.priority=-1"
+
+      # 403 middleware
+      - "traefik.http.middlewares.add-forbidden-header.headers.customrequestheaders.X-Forbidden-Access=true"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
