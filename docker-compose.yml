@@ -67,7 +67,7 @@ services:
       - "traefik.http.services.forbidden-service.loadbalancer.passhostheader=false"
 
       # /web/database/* - priority very high
-      - "traefik.http.routers.database-blocked.rule=(PathPrefix(`/web/database/`) || PathPrefix(`/asoo/`)) && !ClientIP(`194.30.4.97`) && !ClientIP(`194.30.4.101`) && !ClientIP(`172.16.100.1`) && !ClientIP(`10.10.10.1`)"
+      - "traefik.http.routers.database-blocked.rule=(PathPrefix(`/web/database/`) || PathPrefix(`/asoo/auth/`) || PathPrefix(`/asoo/web/dataset/`)) && !ClientIP(`194.30.4.97`) && !ClientIP(`194.30.4.101`) && !ClientIP(`172.16.100.1`) && !ClientIP(`10.10.10.1`)"
       - "traefik.http.routers.database-blocked.entrypoints=websecure"
       - "traefik.http.routers.database-blocked.tls=true"
       - "traefik.http.routers.database-blocked.service=forbidden-service"
