@@ -8,22 +8,35 @@ services:
     container_name: traefik
     restart: always
     command: >
-      sh -c "touch /letsencrypt/acme.json && chmod 600 /letsencrypt/acme.json && traefik 
-      --log.level=INFO 
-      --api.dashboard=false 
-      --api=false 
-      --api.insecure=false 
-      --providers.docker=true 
-      --providers.docker.exposedbydefault=false 
-      --entrypoints.web.address=:80 
-      --entrypoints.websecure.address=:443 
-      --entrypoints.web.http.redirections.entrypoint.to=websecure 
-      --entrypoints.web.http.redirections.entrypoint.scheme=https 
-      --entrypoints.web.http.redirections.entrypoint.permanent=true 
-      --certificatesresolvers.ssl-resolver.acme.tlschallenge=true 
-      --certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es 
-      --certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json"
-
+      sh -c "touch /letsencrypt/acme.json \
+      && chmod 600 /letsencrypt/acme.json \
+      && touch /letsencrypt/acme_dns.json \
+      && chmod 600 /letsencrypt/acme_dns.json \
+      && touch /letsencrypt/acme_dns_account.json \
+      && chmod 600 /letsencrypt/acme_dns_account.json \
+      && traefik \
+      --log.level=INFO
+      --api.dashboard=true
+      --api=true
+      --api.insecure=true
+      --providers.docker=true
+      --providers.docker.exposedbydefault=false
+      --entrypoints.web.address=:80
+      --entrypoints.websecure.address=:443
+      --entrypoints.web.http.redirections.entrypoint.to=websecure
+      --entrypoints.web.http.redirections.entrypoint.scheme=https
+      --entrypoints.web.http.redirections.entrypoint.permanent=true
+      --certificatesresolvers.ssl-resolver.acme.tlschallenge=true
+      --certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es
+      --certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json
+      --certificatesresolvers.dns-resolver.acme.dnschallenge=true
+      --certificatesresolvers.dns-resolver.acme.dnschallenge.provider=acme-dns
+      --certificatesresolvers.dns-resolver.acme.email=desarrollo@indaws.es
+      --certificatesresolvers.dns-resolver.acme.dnschallenge.resolvers=8.8.8.8:53,1.1.1.1:53
+      --certificatesresolvers.dns-resolver.acme.storage=/letsencrypt/acme_dns.json"
+    environment:
+      - ACME_DNS_API_BASE=https://acme.indaws.cloud
+      - ACME_DNS_STORAGE_PATH=/letsencrypt/acme_dns_account.json
     ports:
       - "80:80"
       - "443:443"
