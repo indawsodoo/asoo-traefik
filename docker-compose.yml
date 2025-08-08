@@ -30,7 +30,7 @@ services:
       --entrypoints.web.http.redirections.entrypoint.permanent=true
       --certificatesresolvers.tls-resolver.acme.tlschallenge=true
       --certificatesresolvers.tls-resolver.acme.email=desarrollo@indaws.es
-      --certificatesresolvers.tls-resolver.acme.storage=/letsencrypt/acme.json
+      --certificatesresolvers.tls-resolver.acme.storage=/letsencrypt/acme_tls.json
       --certificatesresolvers.dns-resolver.acme.dnschallenge=true
       --certificatesresolvers.dns-resolver.acme.dnschallenge.provider=acme-dns
       --certificatesresolvers.dns-resolver.acme.email=desarrollo@indaws.es
