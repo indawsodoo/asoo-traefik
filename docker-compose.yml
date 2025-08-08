@@ -8,12 +8,14 @@ services:
     container_name: traefik
     restart: always
     command: >
-      sh -c "touch /letsencrypt/acme.json \
-      && chmod 600 /letsencrypt/acme.json \
+      sh -c "touch /letsencrypt/acme_tls.json \
+      && chmod 600 /letsencrypt/acme_tls.json \
       && touch /letsencrypt/acme_dns.json \
       && chmod 600 /letsencrypt/acme_dns.json \
       && touch /letsencrypt/acme_dns_account.json \
       && chmod 600 /letsencrypt/acme_dns_account.json \
+      && touch /letsencrypt/acme_http.json \
+      && chmod 600 /letsencrypt/acme_http.json \
       && traefik \
       --log.level=INFO
       --api.dashboard=true
@@ -26,14 +28,18 @@ services:
       --entrypoints.web.http.redirections.entrypoint.to=websecure
       --entrypoints.web.http.redirections.entrypoint.scheme=https
       --entrypoints.web.http.redirections.entrypoint.permanent=true
-      --certificatesresolvers.ssl-resolver.acme.tlschallenge=true
-      --certificatesresolvers.ssl-resolver.acme.email=desarrollo@indaws.es
-      --certificatesresolvers.ssl-resolver.acme.storage=/letsencrypt/acme.json
+      --certificatesresolvers.tls-resolver.acme.tlschallenge=true
+      --certificatesresolvers.tls-resolver.acme.email=desarrollo@indaws.es
+      --certificatesresolvers.tls-resolver.acme.storage=/letsencrypt/acme.json
       --certificatesresolvers.dns-resolver.acme.dnschallenge=true
       --certificatesresolvers.dns-resolver.acme.dnschallenge.provider=acme-dns
       --certificatesresolvers.dns-resolver.acme.email=desarrollo@indaws.es
       --certificatesresolvers.dns-resolver.acme.dnschallenge.resolvers=8.8.8.8:53,1.1.1.1:53
-      --certificatesresolvers.dns-resolver.acme.storage=/letsencrypt/acme_dns.json"
+      --certificatesresolvers.dns-resolver.acme.storage=/letsencrypt/acme_dns.json
+      --certificatesresolvers.http-resolver.acme.httpchallenge=true
+      --certificatesresolvers.http-resolver.acme.httpchallenge.entrypoint=web
+      --certificatesresolvers.http-resolver.acme.email=desarrollo@indaws.es
+      --certificatesresolvers.http-resolver.acme.storage=/letsencrypt/acme_http.json"
     environment:
       - ACME_DNS_API_BASE=https://acme.indaws.cloud
       - ACME_DNS_STORAGE_PATH=/letsencrypt/acme_dns_account.json
