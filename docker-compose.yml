@@ -25,9 +25,15 @@ services:
       --providers.docker.exposedbydefault=false
       --entrypoints.web.address=:80
       --entrypoints.websecure.address=:443
+      --entrypoints.metrics.address=:8082
       --entrypoints.web.http.redirections.entrypoint.to=websecure
       --entrypoints.web.http.redirections.entrypoint.scheme=https
       --entrypoints.web.http.redirections.entrypoint.permanent=true
+      --metrics.prometheus=true
+      --metrics.prometheus.entrypoint=metrics
+      --metrics.prometheus.addEntryPointsLabels=true
+      --metrics.prometheus.addRoutersLabels=true
+      --metrics.prometheus.addServicesLabels=true
       --certificatesresolvers.tls-resolver.acme.tlschallenge=true
       --certificatesresolvers.tls-resolver.acme.email=desarrollo@indaws.es
       --certificatesresolvers.tls-resolver.acme.storage=/letsencrypt/acme_tls.json
@@ -46,6 +52,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8082"
     networks:
       - traefik-net
     volumes:
@@ -56,6 +63,7 @@ services:
 
       # middlewares
       - "traefik.http.middlewares.gzip.compress=true"
+      - "traefik.http.middlewares.incloud-ip-whitelist.ipallowlist.sourcerange=194.30.4.97/32, 194.30.4.101/24, 172.16.100.1/24, 10.10.10.1/24"
     logging:
       driver: json-file
       options:
@@ -79,19 +87,6 @@ services:
       - "traefik.http.services.maintenance-service.loadbalancer.server.port=80"
       - "traefik.http.services.maintenance-service.loadbalancer.server.scheme=http"
       - "traefik.http.services.maintenance-service.loadbalancer.passhostheader=false"
-
-      # 403 service
-      - "traefik.http.services.forbidden-service.loadbalancer.server.port=80"
-      - "traefik.http.services.forbidden-service.loadbalancer.server.scheme=http"
-      - "traefik.http.services.forbidden-service.loadbalancer.passhostheader=false"
-
-      # /web/database/* - priority very high
-      - "traefik.http.routers.database-blocked.rule=(PathPrefix(`/web/database/`) || PathPrefix(`/asoo/auth/token`) || PathPrefix(`/asoo/web/dataset/`)) && !ClientIP(`194.30.4.97`) && !ClientIP(`194.30.4.101`) && !ClientIP(`172.16.100.1`) && !ClientIP(`10.10.10.1`)"
-      - "traefik.http.routers.database-blocked.entrypoints=websecure"
-      - "traefik.http.routers.database-blocked.tls=true"
-      - "traefik.http.routers.database-blocked.service=forbidden-service"
-      - "traefik.http.routers.database-blocked.middlewares=add-forbidden-header"
-      - "traefik.http.routers.database-blocked.priority=1000"
 
       # known domains - priority very low
       - "traefik.http.routers.errorpage-fallback.rule=PathPrefix(`/`)"
